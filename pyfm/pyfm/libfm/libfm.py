@@ -10,8 +10,7 @@ def test_connect():
     print fm.test_connect(1, 4, name, True, c_double(8.2))
 
 #test_connect()
-
-fm = ctypes.cdll.LoadLibrary("../lib/libfm_api.so")
+fm = ctypes.cdll.LoadLibrary("lib/libfm_api.so")
 fm.createSparseMatrix.restype = c_void_p
 fm.createDVector.restype = c_void_p
 fm.createFM.restype = c_void_p
