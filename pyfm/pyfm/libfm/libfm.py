@@ -14,7 +14,10 @@ import os
 curr_path = os.path.dirname(os.path.abspath(os.path.expanduser(__file__)))
 lib_path = curr_path + "/../../lib/"
 
-fm = ctypes.cdll.LoadLibrary(lib_path + "libfm_api.so")
+try:
+    fm = ctypes.cdll.LoadLibrary(lib_path + "libfm_api.so")
+except OSError,e:
+    fm = ctypes.cdll.LoadLibrary("../lib/libfm_api.so")
 fm.createSparseMatrix.restype = c_void_p
 fm.createDVector.restype = c_void_p
 fm.createFM.restype = c_void_p
