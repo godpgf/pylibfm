@@ -11,32 +11,29 @@
 #include <assert.h>
 #include <iostream>
 #include <fstream>
+#include <string.h>
 #include "../util/random.h"
 #include "util.h"
 #include "matrix.h"
 
 //版本号
-const uint FMATRIX_EXPECTED_FILE_ID = 2;
-
-//矩阵的元素
-template <typename T> struct SparseEntry {
-    uint id;
-    T value;
-};
+const int FMATRIX_EXPECTED_FILE_ID = 2;
 
 //矩阵的行
 template <typename T> struct SparseRow {
-    SparseEntry<T>* data;
-    uint size;
+public:
+    T* values;
+    int* ids;
+    int size;
 };
 
 //文件头
 struct FileHeader {
-    uint id;
-    uint float_size;
+    int id;
+    int float_size;
     uint64 num_values;
-    uint num_rows;
-    uint num_cols;
+    int num_rows;
+    int num_cols;
 };
 
 template <typename T> class LargeSparseMatrix {
@@ -46,9 +43,9 @@ public:
     virtual bool end() = 0;   // are we at the end?
     virtual void next() = 0; // go to the next line
     virtual SparseRow<T>& getRow() = 0; // pointer to the current row
-    virtual uint getRowIndex() = 0; // index of current row (starting with 0)
-    virtual uint getNumRows() = 0; // get the number of Rows
-    virtual uint getNumCols() = 0; // get the number of Cols
+    virtual int getRowIndex() = 0; // index of current row (starting with 0)
+    virtual int getNumRows() = 0; // get the number of Rows
+    virtual int getNumCols() = 0; // get the number of Cols
     virtual uint64 getNumValues() = 0; // get the number of Values
 
 
@@ -64,28 +61,9 @@ public:
             fh.float_size = sizeof(T);
             out.write(reinterpret_cast<char*>(&fh), sizeof(fh));
             for (begin(); !end(); next()) {
-                out.write(reinterpret_cast<char*>(&(getRow().size)), sizeof(uint));
-                out.write(reinterpret_cast<char*>(getRow().data), sizeof(SparseEntry<T>)*getRow().size);
-            }
-            out.close();
-        } else {
-            throw "could not open " + filename;
-        }
-    }
-
-    void saveToTextFile(std::string filename) {
-        std::cout << "printing to " << filename << std::endl; std::cout.flush();
-        std::ofstream out(filename.c_str());
-        if (out.is_open()) {
-            for (begin(); !end(); next()) {
-                for (uint i = 0; i < getRow().size; i++) {
-                    out << getRow().data[i].id << ":" << getRow().data[i].value;
-                    if ((i+1) < getRow().size) {
-                        out << " ";
-                    } else {
-                        out << "\n";
-                    }
-                }
+                out.write(reinterpret_cast<char*>(&(getRow().size)), sizeof(int));
+                out.write(reinterpret_cast<char*>(getRow().values), sizeof(T)*getRow().size);
+                out.write(reinterpret_cast<char*>(getRow().ids), sizeof(int)*getRow().size);
             }
             out.close();
         } else {
@@ -94,146 +72,85 @@ public:
     }
 };
 
-template <typename T> class LargeSparseMatrixHD : public LargeSparseMatrix<T> {
-protected:
-    DVector< SparseRow<T> > data;
-    DVector< SparseEntry<T> > cache;
-    std::string filename;
-
-    std::ifstream in;
-
-    uint64 position_in_data_cache;
-    uint number_of_valid_rows_in_cache;
-    uint64 number_of_valid_entries_in_cache;
-    uint row_index;
-
-    uint num_cols;
-    uint64 num_values;
-    uint num_rows;
-
-    void readcache() {
-        if (row_index >= num_rows) { return; }
-        number_of_valid_rows_in_cache = 0;
-        number_of_valid_entries_in_cache = 0;
-        position_in_data_cache = 0;
-        do {
-            if ((row_index + number_of_valid_rows_in_cache) > (num_rows-1)) {
-                break;
-            }
-            if (number_of_valid_rows_in_cache >= data.dim) { break; }
-
-            SparseRow<T>& this_row = data.value[number_of_valid_rows_in_cache];
-
-            in.read(reinterpret_cast<char*>(&(this_row.size)), sizeof(uint));
-            if ((this_row.size + number_of_valid_entries_in_cache) > cache.dim) {
-                in.seekg(- (long int) sizeof(uint), std::ios::cur);
-                break;
-            }
-
-            this_row.data = &(cache.value[number_of_valid_entries_in_cache]);
-            in.read(reinterpret_cast<char*>(this_row.data), sizeof(SparseEntry<T>)*this_row.size);
-
-            number_of_valid_rows_in_cache++;
-            number_of_valid_entries_in_cache += this_row.size;
-        } while (true);
-
-    }
-public:
-    LargeSparseMatrixHD(std::string filename, uint64 cache_size) {
-        this->filename = filename;
-        in.open(filename.c_str(), std::ios_base::in | std::ios_base::binary);
-        if (in.is_open()) {
-            FileHeader fh;
-            in.read(reinterpret_cast<char*>(&fh), sizeof(fh));
-            assert(fh.id == FMATRIX_EXPECTED_FILE_ID);
-            assert(fh.float_size == sizeof(T));
-            this->num_values = fh.num_values;
-            this->num_rows = fh.num_rows;
-            this->num_cols = fh.num_cols;
-            //in.close();
-        } else {
-            throw "could not open " + filename;
-        }
-
-        if (cache_size == 0) {
-            cache_size = std::numeric_limits<uint64>::max();
-        }
-        // determine cache sizes automatically:
-        double avg_entries_per_line = (double) this->num_values / this->num_rows;
-        uint num_rows_in_cache;
-        {
-            uint64 dummy = cache_size / (sizeof(SparseEntry<T>) * avg_entries_per_line + sizeof(uint));
-            if (dummy > static_cast<uint64>(std::numeric_limits<uint>::max())) {
-                num_rows_in_cache = std::numeric_limits<uint>::max();
-            } else {
-                num_rows_in_cache = dummy;
-            }
-        }
-        num_rows_in_cache = std::min(num_rows_in_cache, this->num_rows);
-        uint64 num_entries_in_cache = (cache_size - sizeof(uint)*num_rows_in_cache) / sizeof(SparseEntry<T>);
-        num_entries_in_cache = std::min(num_entries_in_cache, this->num_values);
-        std::cout << "num entries in cache=" << num_entries_in_cache << "\tnum rows in cache=" << num_rows_in_cache << std::endl;
-
-        cache.setSize(num_entries_in_cache);
-        data.setSize(num_rows_in_cache);
-    }
-
-    ~LargeSparseMatrixHD() { in.close(); }
-
-    virtual uint getNumRows() { return num_rows; };
-    virtual uint getNumCols() { return num_cols; };
-    virtual uint64 getNumValues() { return num_values; };
-
-    virtual void next() {
-        row_index++;
-        position_in_data_cache++;
-        if (position_in_data_cache >= number_of_valid_rows_in_cache) {
-            readcache();
-        }
-    }
-
-    virtual void begin() {
-        if ((row_index == position_in_data_cache) && (number_of_valid_rows_in_cache > 0)) {
-            // if the beginning is already in the cache, do nothing
-            row_index = 0;
-            position_in_data_cache = 0;
-            // close the file because everything is in the cache
-            if (in.is_open()) {
-                in.close();
-            }
-            return;
-        }
-        row_index = 0;
-        position_in_data_cache = 0;
-        number_of_valid_rows_in_cache = 0;
-        number_of_valid_entries_in_cache = 0;
-        in.seekg(sizeof(FileHeader), std::ios_base::beg);
-        readcache();
-    }
-
-    virtual bool end() { return row_index >= num_rows; }
-
-    virtual SparseRow<T>& getRow() { return data(position_in_data_cache); }
-    virtual uint getRowIndex() { return row_index; }
-
-
-};
-
+/*
+ * 设数组格式如下：
+ * [[1, 0, 2],
+ * [0, 0, 3],
+ * [4, 5, 6]]
+ * data 表示 元数据 显然为1， 2， 3， 4， 5， 6
+ * indices 表示 各个数据在各行的下标， 从该数据我们可以知道：数据1在某行的0位置处， 数据2在某行的2位置处，6在某行的2位置处。
+ * indptr 表示每行数据的个数：[0 2 3 6]表示从第0行开始数据的个数，0表示默认起始点，0之后有几个数字就表示有几行，第一个数字2表示第一行有2 - 0 = 2个数字，因而数字1，2都第0行，第二行有3 - 2 = 1个数字，因而数字3在第1行，以此类推，我们能够知道所有数字的行号
+ * */
 template <typename T> class LargeSparseMatrixMemory : public LargeSparseMatrix<T> {
 protected:
-    uint index;
+    int index;
 public:
-    ~LargeSparseMatrixMemory(){}
-    DVector< SparseRow<T> > data;
-    uint num_cols;
-    uint64 num_values;
-    virtual void begin() { index = 0; };
-    virtual bool end() { return index >= data.dim; }
-    virtual void next() { index++;}
-    virtual SparseRow<T>& getRow() { return data(index); };
-    virtual uint getRowIndex() { return index; };
-    virtual uint getNumRows() { return data.dim; };
-    virtual uint getNumCols() { return num_cols; };
+    LargeSparseMatrixMemory(int num_cols){
+        this->num_cols = num_cols;
+    }
+    ~LargeSparseMatrixMemory(){
+        if(data != nullptr)
+            delete []data;
+        if(indices != nullptr)
+            delete []indices;
+        if(indptr != nullptr)
+            delete []indptr;
+    }
+
+    void fill(T* data, int* indices, int* indptr, int num_rows, uint64 num_values){
+        if(num_rows > max_num_rows){
+            if(this->indptr != nullptr)
+                delete []this->indptr;
+            this->indptr = new int[num_rows + 1];
+            max_num_rows = num_rows;
+        }
+        this->num_rows = num_rows;
+        memcpy(this->indptr, indptr, (num_rows + 1) * sizeof(int));
+
+        if(num_values > max_num_values){
+            if(this->data != nullptr)
+                delete []this->data;
+            this->data = new T[num_values];
+            if(this->indices != nullptr)
+                delete []this->indices;
+            this->indices = new int[num_values];
+            max_num_values = num_values;
+        }
+        this->num_values = num_values;
+        memcpy(this->data, data, num_values * sizeof(T));
+        memcpy(this->indices, indices, num_values * sizeof(int));
+//        for(int i = 0; i < num_values; ++i)
+//            std::cout<<this->data[i]<<" ";
+//        std::cout<<"\n";
+    }
+
+    T* data = {nullptr};
+    int* indices = {nullptr};
+    int* indptr = {nullptr};
+
+    int num_cols;
+    int num_rows = {0};
+    int max_num_rows = {0};
+    uint64 num_values = {0};
+    uint64 max_num_values = {0};
+    SparseRow<T> curRow;
+    virtual void begin() {
+        index = 0;
+        curRow.ids = this->indices + this->indptr[index];
+        curRow.values = this->data + this->indptr[index];
+        curRow.size = this->indptr[index + 1] - this->indptr[index];
+    };
+    virtual bool end() { return index >= num_rows; }
+    virtual void next() {
+        index++;
+        curRow.ids = this->indices + this->indptr[index];
+        curRow.values = this->data + this->indptr[index];
+        curRow.size = this->indptr[index + 1] - this->indptr[index];
+    }
+    virtual SparseRow<T>& getRow() { return curRow; };
+    virtual int getRowIndex() { return index; };
+    virtual int getNumRows() { return num_rows; };
+    virtual int getNumCols() { return num_cols; };
     virtual uint64 getNumValues() { return num_values; };
 };
 

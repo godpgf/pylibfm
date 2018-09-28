@@ -1,9 +1,10 @@
 all:
 	cd libfm; make all
-	cd pyfm; python setup.py install
+	cd pyfm; make all
 
 clean:
 	cd libfm; make clean
+	cd pyfm; make clean
 
 
 

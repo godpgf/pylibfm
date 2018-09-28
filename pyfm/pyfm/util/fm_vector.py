@@ -6,21 +6,30 @@ import numpy as np
 
 
 class FMVector(object):
-    def __init__(self, vector = None, dim = None):
-        if vector is not None:
-            self.values = (c_float * len(vector))()
-            for i in xrange(len(vector)):
-                self.values[i] = vector[i]
-            self.dim = len(vector)
-        elif dim is not None:
-            self.values = (c_float * dim)()
-            self.dim = dim
+    def __init__(self):
+        self.p_vector = c_void_p(fm.createDVector())
+        self.max_num_values = 0
+        self.data = None
 
-        self.p_vector = c_void_p(fm.createDVector(self.values, self.dim))
+    def __del__(self):
+        fm.releaseDVector(self.p_vector);
 
     def to_array(self):
-        fm.transformVector2Array(self.p_vector, self.values)
-        return np.array([self.values[i] for i in xrange(self.dim)])
+        fm.transformVector2Array(self.p_vector, self.data)
+        return np.array([self.data[i] for i in range(self.dim)])
 
-    def clean(self):
-        fm.releaseDVector(self.p_vector);
+    def fill(self, values):
+        if len(values) > self.max_num_values:
+            self.max_num_values = len(values)
+            self.data = (c_float * len(values))()
+        for id, v in enumerate(values):
+            self.data[id] = v
+        self.dim = len(values)
+        fm.fillDVector(self.p_vector, self.data, c_int32(self.dim))
+
+    def fill_empty(self, size):
+        if size > self.max_num_values:
+            self.max_num_values = size
+            self.data = (c_float * size)()
+        self.dim = size
+        fm.fillDVector(self.p_vector, self.data, c_int32(self.dim))

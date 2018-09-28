@@ -190,13 +190,16 @@ public:
 template <typename T> class DVector {
 public:
     uint dim;
+    uint max_dim;
     T* value;
     DVector() {
         dim = 0;
+        max_dim = 0;
         value = NULL;
     }
     DVector(uint p_dim) {
         dim = 0;
+        max_dim = 0;
         value = NULL;
         setSize(p_dim);
     }
@@ -209,12 +212,14 @@ public:
         return value[x];
     }
     void setSize(uint p_dim) {
-        if (p_dim == dim) { return; }
-        if (value != NULL) {
-            delete [] value;
+        if (p_dim > max_dim) {
+            if (value != NULL) {
+                delete [] value;
+            }
+            value = new T[p_dim];
+            max_dim = p_dim;
         }
         dim = p_dim;
-        value = new T[dim];
     }
     T& operator() (unsigned x) {
         return value[x];

@@ -1,24 +1,26 @@
 # coding=utf-8
 # author=godpgf
 import ctypes
-from ctypes import c_void_p
+import platform
+from ctypes import c_void_p, c_float, c_bool, c_int32
 
-def test_connect():
-    fm = ctypes.cdll.LoadLibrary("../lib/libfm_api.so")
-    from ctypes import c_char_p, c_double
-    name = c_char_p("mystring")
-    print fm.test_connect(1, 4, name, True, c_double(8.2))
+sysstr = platform.system()
 
-#test_connect()
 import os
 curr_path = os.path.dirname(os.path.abspath(os.path.expanduser(__file__)))
 lib_path = curr_path + "/../../lib/"
 
 try:
-    fm = ctypes.cdll.LoadLibrary(lib_path + "libfm_api.so")
-except OSError,e:
-    fm = ctypes.cdll.LoadLibrary("../lib/libfm_api.so")
+    fm = ctypes.windll.LoadLibrary(lib_path + 'libfm_api.dll') if sysstr =="Windows" else ctypes.cdll.LoadLibrary(lib_path + 'libfm_api.so')
+except OSError as e:
+    lib_path = curr_path + "/../../../lib/"
+    fm = ctypes.windll.LoadLibrary(
+        lib_path + 'libfm_api.dll') if sysstr == "Windows" else ctypes.cdll.LoadLibrary(
+        lib_path + 'libfm_api.so')
+
+
 fm.createSparseMatrix.restype = c_void_p
 fm.createDVector.restype = c_void_p
 fm.createFM.restype = c_void_p
 fm.createFMModel.restype = c_void_p
+fm.evaluate.restype = c_float

@@ -4,14 +4,14 @@ OBJECTS := libfm_api.o
 
 all: libFM
 
-libFM: libfm_api.o
+libFM: $(OBJECTS)
 	mkdir -p $(LIB_DIR)
 	ar crv $(LIB_DIR)libfm_api.a $(OBJECTS)
-	g++ -shared -o $(LIB_DIR)libfm_api.so $(OBJECTS)
+	g++ -fPIC -std=c++11 -shared -o $(LIB_DIR)libfm_api.so $(OBJECTS)
 	#g++ -O3 -Wall libfm_api.o -o $(BIN_DIR)libFM
 
 %.o: %.cpp
-	g++ -O3 -Wall -c $< -o $@
+	g++ -fPIC -std=c++11 -O3 -Wall -c -g -rdynamic $< -o $@
 
 clean:	clean_lib
 	mkdir -p $(LIB_DIR)

@@ -14,20 +14,20 @@
  * multiplier: 训练结果和真实值之间的误差
  * sum:        当前vx的各维度的累加
  */
-void fm_SGD(FMModel* fm, const double& learn_rate, SparseRow<float> &x, const double multiplier, DVector<double> &sum){
+void fm_SGD(FMModel* fm, const double& learn_rate, SparseRow<float> &x, const double multiplier, DVector<float> &sum){
     if (fm->is_use_w0) {
         fm->w0 -= learn_rate * (multiplier + fm->reg0 * fm->w0);
     }
     if (fm->is_use_w) {
         for (uint i = 0; i < x.size; i++) {
-            double& w = fm->w(x.data[i].id);
-            w -= learn_rate * (multiplier * x.data[i].value + fm->regw * w);
+            double& w = fm->w(x.ids[i]);
+            w -= learn_rate * (multiplier * x.values[i] + fm->regw * w);
         }
     }
     for(int f = 0; f < fm->num_factor; f++){
         for (uint i = 0; i < x.size; i++) {
-            double& v = fm->v(f,x.data[i].id);
-            double grad = sum(f) * x.data[i].value - v * x.data[i].value * x.data[i].value;
+            double& v = fm->v(f,x.ids[i]);
+            double grad = sum(f) * x.values[i] - v * x.values[i] * x.values[i];
             v -= learn_rate * (multiplier * grad + fm->regv * v);
         }
     }

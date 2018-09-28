@@ -33,11 +33,14 @@ train = [
 ]
 v = DictVectorizer()
 X = v.fit_transform(train)
-print(X.toarray())
-y = np.array([float(i%2) for i in xrange(X.shape[0])])
-fm = pylibfm.FM()
-fm.fit(X,y)
-print fm.predict(v.transform({"user": "1", "item": "10", "age": 24}))
+Y = np.array([float(i%2) for i in range(X.shape[0])])
+fm = pylibfm.FM(np.max(X.indices) + 1)
+
+for i in range(100):
+    fm.learn(X, Y)
+    print("iter:%d train:%.4f"%(i, fm.evaluate(X, Y)))
+
+print(fm.predict(v.transform([{"user": "1", "item": "5", "age": 19},{"user": "4", "item": "10", "age": 20}])))
 ```
 
 ## Getting Started

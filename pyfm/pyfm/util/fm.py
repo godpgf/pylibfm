@@ -1,15 +1,16 @@
 # coding=utf-8
 # author=godpgf
 from ctypes import *
+import numpy as np
 from pyfm.libfm import fm
 from .fm_matrix import FMMatrix
 from .fm_vector import FMVector
 
 
 class FM(object):
-    def __init__(self, num_factor=10, num_iter=100, task="regression", algorithm = "sgd", learning_rate=0.001, init_stdev = 0.1, reg0 = 0.0, regw = 0.0, regv = 0.0, is_use_w0 = True, is_use_w = True):
+    def __init__(self, num_cols, num_factor=10, task="regression", algorithm = "sgd", learning_rate=0.001, init_stdev = 0.1, reg0 = 0.0, regw = 0.0, regv = 0.0, is_use_w0 = True, is_use_w = True):
+        self.num_cols = num_cols
         self.num_factor = num_factor
-        self.num_iter = num_iter
         self.task = task
         self.algorithm = algorithm
         self.learning_rate = learning_rate
@@ -19,35 +20,39 @@ class FM(object):
         self.regv = regv
         self.is_use_w0 = is_use_w0
         self.is_use_w = is_use_w
-        self.p_fmModel = None
-        self.p_fmLearn = None
+        self.p_fmModel = c_void_p(fm.createFMModel(c_int32(self.num_cols), c_int32(self.num_factor), c_bool(self.is_use_w0), c_bool(self.is_use_w), c_double(self.init_stdev), c_double(self.reg0), c_double(self.regw), c_double(self.regv)))
+        self.p_fmLearn = c_void_p(fm.createFM(c_char_p(self.task.encode()), c_char_p(self.algorithm.encode()), self.p_fmModel, c_double(self.learning_rate)))
+        self.fm_x = FMMatrix(num_factor)
+        self.fm_y = FMVector()
 
-    def fit(self, x, y):
-        if self.p_fmModel:
-            fm.releaseFMModel(self.p_fmModel)
-        self.p_fmModel = c_void_p(fm.createFMModel(x.shape[1], self.num_factor, self.is_use_w0, self.is_use_w, c_double(self.init_stdev), c_double(self.reg0), c_double(self.regw), c_double(self.regv)))
+    def __del__(self):
+        fm.releaseFMModel(self.p_fmModel)
+        fm.releaseFM(self.p_fmModel)
 
-        if self.p_fmLearn:
-            fm.releaseFM(self.p_fmModel)
-        self.p_fmLearn = c_void_p(fm.createFM(self.num_iter, c_char_p(self.task), c_char_p(self.algorithm), self.p_fmModel, c_double(self.learning_rate)))
+    def learn(self, x, y):
+        if hasattr(x, 'indptr') and hasattr(x, 'indices') and hasattr(x, 'data'):
+            self.fm_x.fill_sparse_matrix(x)
+        elif isinstance(x, np):
+            self.fm_x.fill_matrix(x)
+        self.fm_y.fill(y)
+        fm.learn(self.p_fmLearn, self.fm_x.p_sparse_matrix, self.fm_y.p_vector)
 
-        fm_x = FMMatrix(x)
-        fm_y = FMVector(y)
-        self._fit(fm_x, fm_y)
-        fm_x.clean()
-        fm_y.clean()
-
-    def _fit(self, x, y):
-        fm.learn(self.p_fmLearn, x.p_sparse_matrix, y.p_vector)
+    def evaluate(self, x, y):
+        if hasattr(x, 'indptr') and hasattr(x, 'indices') and hasattr(x, 'data'):
+            self.fm_x.fill_sparse_matrix(x)
+        elif isinstance(x, np):
+            self.fm_x.fill_matrix(x)
+        self.fm_y.fill(y)
+        return fm.evaluate(self.p_fmLearn, self.fm_x.p_sparse_matrix, self.fm_y.p_vector)
 
     def predict(self, x):
-        fm_x = FMMatrix(x)
-        fm_y = FMVector(dim=x.shape[0])
-        self._predict(fm_x, fm_y)
-        y = fm_y.to_array()
-        fm_x.clean()
-        fm_y.clean()
-        return y
+        if hasattr(x, 'indptr') and hasattr(x, 'indices') and hasattr(x, 'data'):
+            self.fm_x.fill_sparse_matrix(x)
+            self.fm_y.fill_empty(len(x.indptr) - 1)
+        elif isinstance(x, np):
+            self.fm_x.fill_matrix(x)
+            self.fm_y.fill_empty(len(x))
 
-    def _predict(self, x, y):
-        fm.predict(self.p_fmLearn, x.p_sparse_matrix, y.p_vector)
+        fm.predict(self.p_fmLearn, self.fm_x.p_sparse_matrix, self.fm_y.p_vector)
+        y = self.fm_y.to_array()
+        return y
