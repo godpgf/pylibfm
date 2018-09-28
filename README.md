@@ -50,50 +50,49 @@ First get the smallest movielens ratings dataset from http://www.grouplens.org/s
 ml-100k contains the files u.item (list of movie ids and titles) and u.data (list of user_id, movie_id, rating, timestamp).
 
 ```python
-import numpy as np
-from sklearn.feature_extraction import DictVectorizer
-from pyfm import pylibfm
-from sklearn.metrics import mean_squared_error
-
-# Read in data
-def loadData(filename,path="ml-100k/"):
-    data = []
-    y = []
-    users=set()
-    items=set()
-    with open(path+filename) as f:
-        for line in f:
-            (user,movieid,rating,ts)=line.split('\t')
-            data.append({ "user_id": str(user), "movie_id": str(movieid)})
-            y.append(float(rating))
-            users.add(user)
-            items.add(movieid)
-
-    return (data, np.array(y), users, items)
-
-(train_data, y_train, train_users, train_items) = loadData("ua.base")
-(test_data, y_test, test_users, test_items) = loadData("ua.test")
-v = DictVectorizer()
-X_train = v.fit_transform(train_data)
-X_test = v.transform(test_data)
-
-# Build and train a Factorization Machine
-fm = pylibfm.FM(num_factor=8, num_iter=100, task="regression", learning_rate=0.001)
-
-fm.fit(X_train,y_train)
-
-preds = fm.predict(X_train)
-print("Train FM MSE: %.4f" % mean_squared_error(y_train,preds))
-
-preds = fm.predict(X_test)
-print("Test FM MSE: %.4f" % mean_squared_error(y_test,preds))
+iimport numpy as np
+ from sklearn.feature_extraction import DictVectorizer
+ from pyfm import pylibfm
+ from sklearn.metrics import mean_squared_error
+ 
+ # Read in data
+ def loadData(filename,path="ml-100k/"):
+     data = []
+     y = []
+     users=set()
+     items=set()
+     with open(path+filename) as f:
+         for line in f:
+             (user,movieid,rating,ts)=line.split('\t')
+             data.append({ "user_id": str(user), "movie_id": str(movieid)})
+             y.append(float(rating))
+             users.add(user)
+             items.add(movieid)
+ 
+     return (data, np.array(y), users, items)
+ 
+ (train_data, y_train, train_users, train_items) = loadData("ua.base")
+ (test_data, y_test, test_users, test_items) = loadData("ua.test")
+ v = DictVectorizer()
+ X_train = v.fit_transform(train_data)
+ X_test = v.transform(test_data)
+ 
+ # Build and train a Factorization Machine
+ fm = pylibfm.FM(num_cols=np.max(X_train.indices) + 1, num_factor=8, task="regression", learning_rate=0.001)
+ 
+ for i in range(100):
+     fm.learn(X_train, y_train)
+     preds_train = fm.predict(X_train)
+     preds_test = fm.predict(X_test)
+     print("Train FM MSE: %.4f Test FM MSE: %.4f" % (mean_squared_error(y_train,preds_train), mean_squared_error(y_test,preds_test)))
+     # print("Train FM MSE: %.4f Test FM MSE: %.4f" % (fm.evaluate(X_train, y_train), fm.evaluate(X_test, y_test)))
 ```
 
 ## Classification example
 ```python
 import numpy as np
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 from pyfm import pylibfm
 
 from sklearn.datasets import make_classification
@@ -107,11 +106,12 @@ v = DictVectorizer()
 X_train = v.fit_transform(X_train)
 X_test = v.transform(X_test)
 
-fm = pylibfm.FM(num_factor=50, num_iter=100, task="classification", learning_rate=0.0001)
+fm = pylibfm.FM(num_cols=np.max(X_train.indices) + 1, num_factor=50, task="classification", learning_rate=0.00006)
 
-fm.fit(X_train,y_train)
+for i in range(100):
+    fm.learn(X_train,y_train)
 
-# Evaluate
-from sklearn.metrics import log_loss
-print "Validation log loss: %.4f" % log_loss(y_test,fm.predict(X_test))
+    # Evaluate
+    from sklearn.metrics import log_loss
+    print("Validation log loss: %.4f" % log_loss(y_test,fm.predict(X_test)))
 ```

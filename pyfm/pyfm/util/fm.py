@@ -27,7 +27,7 @@ class FM(object):
 
     def __del__(self):
         fm.releaseFMModel(self.p_fmModel)
-        fm.releaseFM(self.p_fmModel)
+        fm.releaseFM(self.p_fmLearn)
 
     def learn(self, x, y):
         if hasattr(x, 'indptr') and hasattr(x, 'indices') and hasattr(x, 'data'):
