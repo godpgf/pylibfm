@@ -17,17 +17,20 @@ class FMMatrix(object):
         self.p_sparse_matrix = c_void_p(fm.createSparseMatrix(c_int32(num_cols)))
         self.max_num_values = 0
         self.max_num_rows = 0
+        self.num_cols = num_cols
         self.data = None
         self.indptr = None
         self.indices = None
+        self.id2group = (c_int * num_cols)()
 
     def __del__(self):
         fm.releaseSparseMatrix(self.p_sparse_matrix)
 
-    def fill_sparse_matrix(self, sx):
+    def fill_sparse_matrix(self, sx, id2group = None):
         if len(sx.indptr) - 1 > self.max_num_rows:
             self.max_num_rows = len(sx.indptr) - 1
             self.indptr = (c_int * len(sx.indptr))()
+
         if len(sx.data) > self.max_num_values:
             self.max_num_values = len(sx.data)
             self.data = (c_float * len(sx.data))()
@@ -39,7 +42,13 @@ class FMMatrix(object):
             self.indices[id] = v
         for id, v in enumerate(sx.data):
             self.data[id] = v
-        fm.fillSparseMatrix(self.p_sparse_matrix, self.data, self.indices, self.indptr, c_int32(len(sx.indptr)-1), c_int32(len(sx.data)))
+        if id2group is not None:
+            for id, v in enumerate(id2group):
+                self.id2group[id] = int(v)
+        else:
+            for id in range(self.num_cols):
+                self.id2group[id] = id
+        fm.fillSparseMatrix(self.p_sparse_matrix, self.data, self.indices, self.indptr, self.id2group, c_int32(len(sx.indptr)-1), c_int32(len(sx.data)))
 
     def fill_matrix(self, x):
         indptr = [0]

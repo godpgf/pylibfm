@@ -25,6 +25,7 @@ public:
 public:
     //特征数
     uint num_attribute;
+    uint num_group;
     bool is_use_w0, is_use_w;
     //压缩后的因子数
     int num_factor;
@@ -73,6 +74,7 @@ FMModel::FMModel() {
 
 void FMModel::debug() {
     std::cout << "num_attributes=" << num_attribute << std::endl;
+    std::cout << "num_group=" << num_group << std::endl;
     std::cout << "range (" << min_target << "," << max_target << ")" << std::endl;
     std::cout << "use w0=" << is_use_w0 << std::endl;
     std::cout << "use w1=" << is_use_w << std::endl;

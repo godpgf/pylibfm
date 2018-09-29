@@ -24,6 +24,7 @@ template <typename T> struct SparseRow {
 public:
     T* values;
     int* ids;
+    int* col2group;
     int size;
 };
 
@@ -80,6 +81,7 @@ public:
  * data 表示 元数据 显然为1， 2， 3， 4， 5， 6
  * indices 表示 各个数据在各行的下标， 从该数据我们可以知道：数据1在某行的0位置处， 数据2在某行的2位置处，6在某行的2位置处。
  * indptr 表示每行数据的个数：[0 2 3 6]表示从第0行开始数据的个数，0表示默认起始点，0之后有几个数字就表示有几行，第一个数字2表示第一行有2 - 0 = 2个数字，因而数字1，2都第0行，第二行有3 - 2 = 1个数字，因而数字3在第1行，以此类推，我们能够知道所有数字的行号
+ * col2group 表示各行下标到组的映射
  * */
 template <typename T> class LargeSparseMatrixMemory : public LargeSparseMatrix<T> {
 protected:
@@ -87,6 +89,7 @@ protected:
 public:
     LargeSparseMatrixMemory(int num_cols){
         this->num_cols = num_cols;
+        col2group = new int[num_cols];
     }
     ~LargeSparseMatrixMemory(){
         if(data != nullptr)
@@ -95,9 +98,18 @@ public:
             delete []indices;
         if(indptr != nullptr)
             delete []indptr;
+        delete []col2group;
     }
 
-    void fill(T* data, int* indices, int* indptr, int num_rows, uint64 num_values){
+    void fill(T* data, int* indices, int* indptr, int* col2group, int num_rows, uint64 num_values){
+        if(col2group == nullptr){
+            for(int i = 0; i < num_cols; ++i){
+                this->col2group[i] = i;
+            }
+        } else {
+            memcpy(this->col2group, col2group, sizeof(int) * this->num_cols);
+        }
+
         if(num_rows > max_num_rows){
             if(this->indptr != nullptr)
                 delete []this->indptr;
@@ -127,6 +139,7 @@ public:
     T* data = {nullptr};
     int* indices = {nullptr};
     int* indptr = {nullptr};
+    int* col2group = {nullptr};
 
     int num_cols;
     int num_rows = {0};
@@ -139,6 +152,7 @@ public:
         curRow.ids = this->indices + this->indptr[index];
         curRow.values = this->data + this->indptr[index];
         curRow.size = this->indptr[index + 1] - this->indptr[index];
+        curRow.col2group = this->col2group;
     };
     virtual bool end() { return index >= num_rows; }
     virtual void next() {

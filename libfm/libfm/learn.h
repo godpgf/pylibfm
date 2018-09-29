@@ -74,7 +74,7 @@ class FMLearn {
                 p = std::fmaxf(fm->min_target, p);
                 double err = p - target(x.getRowIndex());
                 rmse_sum_sqr += err*err;
-                mae_sum_abs += std::abs((double)err);
+                mae_sum_abs += std::abs(err);
             }
             return std::sqrt(rmse_sum_sqr/x.getNumRows());
         }

@@ -5,6 +5,7 @@
 #include "util/matrix.h"
 #include <float.h>
 #include "libfm/learn_sgd_element.h"
+#include "libfm/learn_sgd_element_adapt_reg.h"
 
 #ifndef WIN32 // or something like that...
 #define DLLEXPORT
@@ -24,9 +25,9 @@ LargeSparseMatrixMemory<float> *DLLEXPORT createSparseMatrix(int num_cols) {
 
 //在稀疏矩阵填写数据
 void DLLEXPORT
-fillSparseMatrix(LargeSparseMatrixMemory<float> *sparseMatrix, float *data, int *indices, int *indptr, int num_rows,
+fillSparseMatrix(LargeSparseMatrixMemory<float> *sparseMatrix, float *data, int *indices, int *indptr, int* col2group, int num_rows,
                  int num_values) {
-    sparseMatrix->fill(data, indices, indptr, num_rows, num_values);
+    sparseMatrix->fill(data, indices, indptr, col2group, num_rows, num_values);
 }
 
 //清除
@@ -60,10 +61,11 @@ void DLLEXPORT releaseDVector(DVector<double> *vector) {
 
 //学习器相关---------------------------------------------------------------------
 
-FMModel *DLLEXPORT createFMModel(int num_attribute, int num_factor, bool is_use_w0, bool is_use_w, double init_stdev,
+FMModel *DLLEXPORT createFMModel(int num_attribute, int num_group, int num_factor, bool is_use_w0, bool is_use_w, double init_stdev,
                                  double reg0, double regw, double regv) {
     FMModel *fm = new FMModel();
     fm->num_attribute = num_attribute;
+    fm->num_group = num_group;
     fm->num_factor = num_factor;
     fm->is_use_w0 = is_use_w0;
     fm->is_use_w = is_use_w;
@@ -95,7 +97,8 @@ FMLearn *DLLEXPORT createFM(char *task, char *algorithm, FMModel *fm, double lea
         fml = new FMLearnSGDElement();
         ((FMLearnSGDElement *) fml)->learn_rate = learning_rate;
     } else if (strcmp("sgda", algorithm) == 0) {
-        //todo
+        fml = new FMLearnSGDAElement();
+        ((FMLearnSGDAElement *) fml)->learn_rate = learning_rate;
     } else if (strcmp("mcmc", algorithm) == 0) {
         //todo
     } else {
