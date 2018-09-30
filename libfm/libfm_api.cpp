@@ -55,14 +55,14 @@ void DLLEXPORT transformVector2Array(DVector<float> *vector, float *out) {
 }
 
 //清除
-void DLLEXPORT releaseDVector(DVector<double> *vector) {
+void DLLEXPORT releaseDVector(DVector<float> *vector) {
     delete vector;
 }
 
 //学习器相关---------------------------------------------------------------------
 
-FMModel *DLLEXPORT createFMModel(int num_attribute, int num_group, int num_factor, bool is_use_w0, bool is_use_w, double init_stdev,
-                                 double reg0, double regw, double regv) {
+FMModel *DLLEXPORT createFMModel(int num_attribute, int num_group, int num_factor, bool is_use_w0, bool is_use_w, float init_stdev,
+                                 float reg0, float regw, float regv) {
     FMModel *fm = new FMModel();
     fm->num_attribute = num_attribute;
     fm->num_group = num_group;
@@ -84,7 +84,7 @@ void DLLEXPORT releaseFMModel(FMModel *fm) {
 }
 
 //创建学习器
-FMLearn *DLLEXPORT createFM(char *task, char *algorithm, FMModel *fm, double learning_rate) {
+FMLearn *DLLEXPORT createFM(char *task, char *algorithm, FMModel *fm, float learning_rate) {
     FMLearn *fml = NULL;
 
 //        std::cout<<task<<std::endl;

@@ -22,8 +22,8 @@ class FM(object):
         self.regv = regv
         self.is_use_w0 = is_use_w0
         self.is_use_w = is_use_w
-        self.p_fmModel = c_void_p(fm.createFMModel(c_int32(self.num_cols), c_int32(self.num_group), c_int32(self.num_factor), c_bool(self.is_use_w0), c_bool(self.is_use_w), c_double(self.init_stdev), c_double(self.reg0), c_double(self.regw), c_double(self.regv)))
-        self.p_fmLearn = c_void_p(fm.createFM(c_char_p(self.task.encode()), c_char_p(self.algorithm.encode()), self.p_fmModel, c_double(self.learning_rate)))
+        self.p_fmModel = c_void_p(fm.createFMModel(c_int32(self.num_cols), c_int32(self.num_group), c_int32(self.num_factor), c_bool(self.is_use_w0), c_bool(self.is_use_w), c_float(self.init_stdev), c_float(self.reg0), c_float(self.regw), c_float(self.regv)))
+        self.p_fmLearn = c_void_p(fm.createFM(c_char_p(self.task.encode()), c_char_p(self.algorithm.encode()), self.p_fmModel, c_float(self.learning_rate)))
         self.fm_x = FMMatrix(num_factor)
         self.fm_y = FMVector()
 

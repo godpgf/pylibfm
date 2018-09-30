@@ -11,7 +11,7 @@
 class FMLearnSGD : public FMLearn {
 public:
     //学习率
-    double learn_rate;
+    float learn_rate;
 
     virtual void init() {
         FMLearn::init();
@@ -22,14 +22,14 @@ public:
     }
 
 
-    void SGD(SparseRow<float> &x, const double multiplier, DVector<float> &sum) {
+    void SGD(SparseRow<float> &x, const float multiplier, DVector<float> &sum) {
         fm_SGD(fm, learn_rate, x, multiplier, sum);
     }
 
     virtual void predict(LargeSparseMatrix<float> &x, DVector<float> &out) {
         assert(x.getNumRows() == out.dim);
         for (x.begin(); !x.end(); x.next()) {
-            double p = predict_case(x);
+            float p = predict_case(x);
             if (task == TASK_REGRESSION) {
                 p = std::fminf(fm->max_target, p);
                 p = std::fmaxf(fm->min_target, p);

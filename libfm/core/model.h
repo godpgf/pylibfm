@@ -19,9 +19,9 @@ private:
     //存储中间数据
     DVector<float> m_sum, m_sum_sqr;
 public:
-    double w0;
-    DVectorDouble w;
-    DMatrixDouble v;
+    float w0;
+    DVectorFloat w;
+    DMatrixFloat v;
 public:
     //特征数
     uint num_attribute;
@@ -35,12 +35,12 @@ public:
     float max_target;
 
     //正则项,用来防止过拟合(在损失函数中加入,防止w的斜率太大)
-    double reg0;
-    double regw, regv;
+    float reg0;
+    float regw, regv;
 
     //初始化v时用的均值和标准差
-    double init_stdev;
-    double init_mean;
+    float init_stdev;
+    float init_mean;
 public:
     FMModel();
 
@@ -49,9 +49,9 @@ public:
     void init();
 
     //得到当前行的预测值
-    double predict(SparseRow<float> &x);
+    float predict(SparseRow<float> &x);
 
-    double predict(SparseRow<float> &x, DVector<float> &sum, DVector<float> &sum_sqr);
+    float predict(SparseRow<float> &x, DVector<float> &sum, DVector<float> &sum_sqr);
 
     void saveModel(std::string model_file_path);
 
@@ -96,13 +96,13 @@ void FMModel::init() {
     min_target = max_target = 0.0;
 }
 
-double FMModel::predict(SparseRow<float> &x) {
+float FMModel::predict(SparseRow<float> &x) {
     return predict(x, m_sum, m_sum_sqr);
 }
 
-double FMModel::predict(SparseRow<float> &x, DVector<float> &sum, DVector<float> &sum_sqr) {
+float FMModel::predict(SparseRow<float> &x, DVector<float> &sum, DVector<float> &sum_sqr) {
     // 参加doc下面的论文
-    double result = 0;
+    float result = 0;
     if (is_use_w0) {
         result += w0;
 //        std::cout<<"w0 "<<w0<<std::endl;
@@ -118,7 +118,7 @@ double FMModel::predict(SparseRow<float> &x, DVector<float> &sum, DVector<float>
         sum(f) = 0;
         sum_sqr(f) = 0;
         for (uint i = 0; i < x.size; i++) {
-            double d = v(f, x.ids[i]) * x.values[i];
+            float d = v(f, x.ids[i]) * x.values[i];
             sum(f) += d;
             sum_sqr(f) += d * d;
 //            std::cout<<"d:"<<v(f, x.ids[i])<<std::endl;

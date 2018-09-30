@@ -13,7 +13,7 @@ class FMLearn {
         //缓存中间计算结果,避免反复申请释放内存
         DVector<float> sum, sum_sqr;
         //预测某个数据的结果,在MCMC算法中会被重载
-        virtual double predict_case(LargeSparseMatrix<float> &x){
+        virtual float predict_case(LargeSparseMatrix<float> &x){
             //预测矩阵当前行的结果
             return fm->predict(x.getRow());
         }
@@ -31,7 +31,7 @@ class FMLearn {
         }
 
         //验证某个输入的准确率
-        virtual double evaluate(LargeSparseMatrix<float> &x, DVector<float> &target){
+        virtual float evaluate(LargeSparseMatrix<float> &x, DVector<float> &target){
             if (task == TASK_REGRESSION){
                 return evaluateRegression(x, target);
             } else if (task == TASK_CLASSIFICATION){
@@ -54,25 +54,25 @@ class FMLearn {
 
         virtual void predict(LargeSparseMatrix<float> &x, DVector<float>& out) = 0;
     protected:
-        virtual double evaluateClassification(LargeSparseMatrix<float> &x, DVector<float> &target){
+        virtual float evaluateClassification(LargeSparseMatrix<float> &x, DVector<float> &target){
             int num_correct = 0;
             for (x.begin(); !x.end(); x.next()) {
-                double p = predict_case(x);
+                float p = predict_case(x);
                 if (((p >= 0) && (target(x.getRowIndex()) >= 0)) || ((p < 0) && (target(x.getRowIndex()) < 0))) {
                     num_correct++;
                 }
             }
-            return (double) num_correct / (double) x.getNumRows();
+            return (float) num_correct / (float) x.getNumRows();
         }
 
-        virtual double evaluateRegression(LargeSparseMatrix<float> &x, DVector<float> &target){
-            double rmse_sum_sqr = 0;
-            double mae_sum_abs = 0;
+        virtual float evaluateRegression(LargeSparseMatrix<float> &x, DVector<float> &target){
+            float rmse_sum_sqr = 0;
+            float mae_sum_abs = 0;
             for (x.begin(); !x.end(); x.next()) {
-                double p = predict_case(x);
+                float p = predict_case(x);
                 p = std::fminf(fm->max_target, p);
                 p = std::fmaxf(fm->min_target, p);
-                double err = p - target(x.getRowIndex());
+                float err = p - target(x.getRowIndex());
                 rmse_sum_sqr += err*err;
                 mae_sum_abs += std::abs(err);
             }

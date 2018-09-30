@@ -195,17 +195,7 @@ public:
             value[i] = v.value[i];
         }
     }
-    void save(std::string filename) {
-        std::ofstream out_file (filename.c_str());
-        if (out_file.is_open())	{
-            for (uint i = 0; i < dim; i++) {
-                out_file << value[i] << std::endl;
-            }
-            out_file.close();
-        } else {
-            std::cout << "Unable to open file " << filename;
-        }
-    }
+
 
     void saveToBinaryFile(std::string filename) {
         std::ofstream out (filename.c_str(), std::ios_base::out | std::ios_base::binary);
@@ -222,21 +212,6 @@ public:
             std::cout << "Unable to open file " << filename;
         }
     }
-
-
-    void load(std::string filename) {
-        std::ifstream in_file (filename.c_str());
-        if (! in_file.is_open()) {
-            throw "Unable to open file " + filename;
-        }
-        for (uint i = 0; i < dim; i++) {
-            T v;
-            in_file >> v;
-            value[i] = v;
-        }
-        in_file.close();
-    }
-
 
     void loadFromBinaryFile(std::string filename) {
         std::ifstream in (filename.c_str(), std::ios_base::in | std::ios_base::binary);
@@ -259,25 +234,25 @@ public:
 };
 
 
-class DVectorDouble : public DVector<double> {
+class DVectorFloat : public DVector<float> {
 public:
-    void init_normal(double mean, double stdev) {
+    void init_normal(float mean, float stdev) {
         for (uint i_2 = 0; i_2 < dim; i_2++) {
             value[i_2] = ran_gaussian(mean, stdev);
         }
     }
 };
 
-class DMatrixDouble : public DMatrix<double> {
+class DMatrixFloat : public DMatrix<float> {
 public:
-    void init(double mean, double stdev) {
+    void init(float mean, float stdev) {
         for (uint i_1 = 0; i_1 < dim1; i_1++) {
             for (uint i_2 = 0; i_2 < dim2; i_2++) {
                 value[i_1* dim2 + i_2] = ran_gaussian(mean, stdev);
             }
         }
     }
-    void init_column(double mean, double stdev, int column) {
+    void init_column(float mean, float stdev, int column) {
         for (uint i_1 = 0; i_1 < dim1; i_1++) {
             value[i_1* dim2 + column] = ran_gaussian(mean, stdev);
         }

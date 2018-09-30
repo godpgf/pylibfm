@@ -49,6 +49,12 @@ public:
     virtual int getNumCols() = 0; // get the number of Cols
     virtual uint64 getNumValues() = 0; // get the number of Values
 
+    virtual void beginT() = 0; // go to the beginning
+    virtual bool endT() = 0;   // are we at the end?
+    virtual void nextT() = 0; // go to the next line
+    virtual SparseRow<T>& getRowT() = 0; // pointer to the current row
+    virtual int getRowIndexT() = 0; // index of current row (starting with 0)
+
 
     void saveToBinaryFile(std::string filename) {
         std::cout << "printing to " << filename << std::endl; std::cout.flush();
@@ -86,10 +92,12 @@ public:
 template <typename T> class LargeSparseMatrixMemory : public LargeSparseMatrix<T> {
 protected:
     int index;
+    int indexT;
 public:
     LargeSparseMatrixMemory(int num_cols){
         this->num_cols = num_cols;
         col2group = new int[num_cols];
+        indptr_t = new int[num_cols + 1];
     }
     ~LargeSparseMatrixMemory(){
         if(data != nullptr)
@@ -98,6 +106,12 @@ public:
             delete []indices;
         if(indptr != nullptr)
             delete []indptr;
+        if(data_t != nullptr)
+            delete []data_t;
+        if(indices_t != nullptr)
+            delete []indices_t;
+        if(indptr_t != nullptr)
+            delete []indptr_t;
         delete []col2group;
     }
 
@@ -117,23 +131,50 @@ public:
             max_num_rows = num_rows;
         }
         this->num_rows = num_rows;
-        memcpy(this->indptr, indptr, (num_rows + 1) * sizeof(int));
+//        memcpy(this->indptr, indptr, (num_rows + 1) * sizeof(int));
+        memset(this->indptr, 0, (num_rows + 1) * sizeof(int));
 
         if(num_values > max_num_values){
             if(this->data != nullptr)
                 delete []this->data;
+            if(this->data_t != nullptr)
+                delete []this->data_t;
             this->data = new T[num_values];
+            this->data_t = new T[num_values];
             if(this->indices != nullptr)
                 delete []this->indices;
+            if(this->indices_t != nullptr)
+                delete []this->indices_t;
             this->indices = new int[num_values];
+            this->indices_t = new int[num_values];
             max_num_values = num_values;
         }
         this->num_values = num_values;
         memcpy(this->data, data, num_values * sizeof(T));
         memcpy(this->indices, indices, num_values * sizeof(int));
-//        for(int i = 0; i < num_values; ++i)
-//            std::cout<<this->data[i]<<" ";
-//        std::cout<<"\n";
+
+        //transpose
+        memset(this->indptr_t, 0, (sizeof(num_cols) + 1) * sizeof(int));
+        int cur_data_index = 0;
+        for(uint cur_col_index = 0; cur_col_index < num_cols; ++cur_col_index){
+            for(uint i = 0; i < num_rows; ++i){
+                //占时用this->indices记录当前遍历到的位置
+                int offset = this->indices[i];
+                if(indptr[i] + offset < indptr[i+1]){
+                    int id = indices[indptr[i] + offset];
+                    if(id == cur_col_index){
+                        this->data_t[cur_data_index] = data[indptr[i] + offset];
+                        this->indices_t[cur_data_index] = i;
+                        ++this->indices[i];
+                        ++cur_data_index;
+                    }
+                }
+            }
+            indptr_t[cur_col_index + 1] = cur_data_index;
+        }
+
+        //this->indptr内存是借给上面程序用的，现在需要记录它应该有的数据
+        memcpy(this->indptr, indptr, (num_rows + 1) * sizeof(int));
     }
 
     T* data = {nullptr};
@@ -141,12 +182,18 @@ public:
     int* indptr = {nullptr};
     int* col2group = {nullptr};
 
+    //transpose
+    T* data_t = {nullptr};
+    int* indices_t = {nullptr};
+    int* indptr_t = {nullptr};
+
     int num_cols;
     int num_rows = {0};
     int max_num_rows = {0};
     uint64 num_values = {0};
     uint64 max_num_values = {0};
     SparseRow<T> curRow;
+    SparseRow<T> curRowT;
     virtual void begin() {
         index = 0;
         curRow.ids = this->indices + this->indptr[index];
@@ -166,6 +213,23 @@ public:
     virtual int getNumRows() { return num_rows; };
     virtual int getNumCols() { return num_cols; };
     virtual uint64 getNumValues() { return num_values; };
+
+    virtual void beginT() {
+        indexT = 0;
+        curRowT.ids = this->indices_t + this->indptr_t[indexT];
+        curRowT.values = this->data_t + this->indptr_t[indexT];
+        curRowT.size = this->indptr_t[indexT + 1] - this->indptr_t[indexT];
+        curRowT.col2group = this->col2group;
+    };
+    virtual bool endT() { return indexT >= num_cols; }
+    virtual void nextT() {
+        indexT++;
+        curRowT.ids = this->indices_t + this->indptr_t[indexT];
+        curRowT.values = this->data_t + this->indptr_t[indexT];
+        curRowT.size = this->indptr_t[indexT + 1] - this->indptr_t[indexT];
+    }
+    virtual SparseRow<T>& getRowT() { return curRowT; };
+    virtual int getRowIndexT() { return indexT; };
 };
 
 

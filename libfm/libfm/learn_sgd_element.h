@@ -16,9 +16,9 @@ class FMLearnSGDElement: public FMLearnSGD{
         virtual void learn(LargeSparseMatrix<float> &x, DVector<float>& target){
             FMLearnSGD::learn(x, target);
             for (x.begin(); !x.end(); x.next()){
-                double p = fm->predict(x.getRow(), sum, sum_sqr);
+                float p = fm->predict(x.getRow(), sum, sum_sqr);
 //                std::cout<<p<<std::endl;
-                double mult = 0;
+                float mult = 0;
                 if (task == TASK_REGRESSION) {
                     p = std::fminf(fm->max_target, p);
                     p = std::fmaxf(fm->min_target, p);
