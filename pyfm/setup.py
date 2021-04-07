@@ -19,14 +19,13 @@ setup(
     author='godpgf',
     author_email='godpgf@qq.com',
     package_data={'': ['*.*']},
-    data_files = [('lib',[('../lib/libfm_api.dll' if sysstr =="Windows" else '../lib/libfm_api.so')])],
+    data_files=[('lib', [('../lib/libfm_api.dll' if sysstr == "Windows" else '../lib/libfm_api.so')])],
     url='https://github.com/godpgf',
-
-    install_requires=[str(ir.req) for ir in parse_requirements("requirements.txt", session=False)],
+    install_requires=[str(ir.req) if hasattr(ir, "req") else str(ir.requirement) for ir in parse_requirements("requirements.txt", session=False)],
     zip_safe=False,
-    #entry_points={
+    # entry_points={
     #    "console_scripts": [
     #        "rqalpha = rqalpha.__main__:entry_point",
     #    ]
-    #},
+    # },
 )
